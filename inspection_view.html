@@ -2,13 +2,28 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <titleInspected</title>
+    <title>Inspected</title>
   </head>
   <body>
     <h1>
       Inspected
     </h1>
-    url: <span id="urlToInspect"></span>
+    
+    <div>
+      url: <span id="parentUrl"></span>
+    </div>
+    <table id="contents"></table>
+    <div>
+      <button id="selectAll">Select all</button>
+      <button id="unselectAll">Unselect all</button>
+    </div>
+    <div>
+      pattern: <input type="text" id="pattern" value="{name}" />
+    </div>
+    <div>
+      <button id="cancel">Cancel</button>
+      <button id="start">Start Donwload</button>
+    </div>
     <script>
       require('./inspection_view.js')
     </script>

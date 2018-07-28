@@ -1,38 +1,19 @@
-// Modules to control application life and create native browser window
-const {app, BrowserWindow, ipcMain} = require('electron')
+const {app, BrowserWindow, ipcMain, net} = require('electron')
+const urlModule = require("url");
 
-// Keep a global reference of the window object, if you don't, the window will
-// be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
 function createWindow () {
-  // Create the browser window.
   mainWindow = new BrowserWindow({width: 800, height: 600})
-
-  // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
-
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
-
-  // Emitted when the window is closed.
+  mainWindow.loadFile('top.html')
   mainWindow.on('closed', function () {
-    // Dereference the window object, usually you would store windows
-    // in an array if your app supports multi windows, this is the time
-    // when you should delete the corresponding element.
     mainWindow = null
   })
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on('ready', createWindow)
+app.on('ready', createWindow);
 
-// Quit when all windows are closed.
 app.on('window-all-closed', function () {
-  // On OS X it is common for applications and their menu bar
-  // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
     app.quit()
   }
@@ -42,17 +23,92 @@ app.on('activate', function () {
   if (mainWindow === null) {
     createWindow()
   }
-})
+});
+
+const extMapping = {
+  jpeg: "jpg",
+  jpeg: "jpg",
+  gif: "gif",
+  png: "png",
+  bmp: "bmp"
+}
+
+function inspectPage(url) {
+  function contentTypeFromExt(ext) {
+    ext = ext.toLowerCase();
+    const t = extMapping[ext];
+    if (t === undefined) {
+      return 'unknown';
+    }
+    return t;
+  }
+
+  function parseImgTag(img) {
+    const c = {};
+    c.url = img.url;
+    const filename = urlModule.parse(img.url).pathname.split('/').pop()
+    c.text = filename;
+    c.content_type = contentTypeFromExt(filename.split('.').pop());
+    return c;
+  }
+
+  function parseLinkTag(a) {
+    const c = {};
+    c.url = a.href;
+    const filename = urlModule.parse(a.url).pathname.split('/').pop()
+    c.text = filename;
+    c.content_type = contentTypeFromExt(filename.split('.').pop());
+    return c;
+  }
+
+  return new Promise((resolve, reject) => {
+    console.log(url);
+    request = net.request({
+      url: url,
+      redirect: "follow"
+    }).on('response', (response) => {
+      console.log(response);
+      let text = '';
+      response.on('data', (chunk) => {
+        text += chunk;
+      });
+      response.on('end', () => { resolve(text); });
+    }).end();
+  }).then((text) => {
+    console.log(text);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html')
+    const contents = [];
+    doc.querySelectorAll("a, img").forEach((e) => {
+      if (e.tagName == "IMG") {
+        contents.push(parseImgTag(e));
+      } else {
+        contents.push(parseLinkTag(e));
+      }
+    });
+  });
+}
 
 ipcMain.on('open-inspection-view', function(event, j) {
   const arg = JSON.parse(j);
-  const w = new BrowserWindow({
-    parent: mainWindow, 
-    show: false,
-  });
 
-  w.loadURL(`file://${__dirname}/inspection_view.html`);
-  w.showInactive();
-  w.webContents.send('store-data', [1,2,3]);
+  inspectPage(arg.url).then((contents) => {
+    const w = new BrowserWindow({
+      parent: mainWindow, 
+      show: false,
+    });
+    w.webContents.on('did-finish-load', function() {
+      const a = JSON.stringify({
+        parentUrl: arg.url,
+        contents: contents
+      });
+      w.webContents.send('store-data', a);
+    });
+    w.loadURL(`file://${__dirname}/inspection_view.html`);
+    w.showInactive();
+  });
 });
 
+ipcMain.on('add-queue', (event, j) => {
+  console.log(j);
+});
