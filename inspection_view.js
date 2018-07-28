@@ -1,4 +1,7 @@
-var { remote } = require('electron');
+const {ipcRenderer} = require('electron');
+//const var { remote } = require('electron');
 
-console.log(remote.getCurrentWindow());
-console.log(remote);
+opcRenderer.on("store-data", (event, j) => {
+    const arg = JSON.parse(j);
+    alert(arg);
+});

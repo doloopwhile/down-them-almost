@@ -39,31 +39,20 @@ app.on('window-all-closed', function () {
 })
 
 app.on('activate', function () {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) {
     createWindow()
   }
 })
 
-function openInspectionWindow(url) {
-}
-
-ipcMain.on('open-inspection-view', function(event, arg) {
+ipcMain.on('open-inspection-view', function(event, j) {
+  const arg = JSON.parse(j);
   const w = new BrowserWindow({
     parent: mainWindow, 
     show: false,
   });
 
-  w.loadURL(`file://${__dirname}/inspection_view.html`, {
-    postData: [{
-      type: 'rawData',
-      bytes: Buffer.from(arg.url)
-    }]
-  });
-  w.once('ready-to-show', () => {
-    w.show()
-  });
+  w.loadURL(`file://${__dirname}/inspection_view.html`);
   w.showInactive();
+  w.webContents.send('store-data', [1,2,3]);
 });
 

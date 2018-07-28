@@ -4,5 +4,6 @@ const inspect = document.getElementById("inspect");
 const urlInput = document.getElementById("url");
 
 inspect.addEventListener("click", function() {
-    ipcRenderer.send('open-inspection-view', { url: urlInput.text });
+    const arg = JSON.stringify({ url: urlInput.value });
+    ipcRenderer.send('open-inspection-view', arg);
 });
