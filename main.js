@@ -1,17 +1,24 @@
-const {app, BrowserWindow, ipcMain, net} = require('electron')
+const {app, BrowserWindow, ipcMain, net} = require('electron');
 const urlModule = require("url");
+const fs = require('fs');
 
 let mainWindow
+let progressWindow
 
 function createWindow () {
   mainWindow = new BrowserWindow({width: 800, height: 600})
   mainWindow.loadFile('top.html')
   mainWindow.on('closed', function () {
     mainWindow = null
-  })
+  });
+
+  progressWindow = new BrowserWindow({ parent: mainWindow });
+  progressWindow.loadURL('progress.html');
 }
 
-app.on('ready', createWindow);
+app.on('ready', () => {
+  createWindow();
+});
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {
@@ -25,90 +32,97 @@ app.on('activate', function () {
   }
 });
 
-const extMapping = {
-  jpeg: "jpg",
-  jpeg: "jpg",
-  gif: "gif",
-  png: "png",
-  bmp: "bmp"
-}
-
-function inspectPage(url) {
-  function contentTypeFromExt(ext) {
-    ext = ext.toLowerCase();
-    const t = extMapping[ext];
-    if (t === undefined) {
-      return 'unknown';
-    }
-    return t;
-  }
-
-  function parseImgTag(img) {
-    const c = {};
-    c.url = img.url;
-    const filename = urlModule.parse(img.url).pathname.split('/').pop()
-    c.text = filename;
-    c.content_type = contentTypeFromExt(filename.split('.').pop());
-    return c;
-  }
-
-  function parseLinkTag(a) {
-    const c = {};
-    c.url = a.href;
-    const filename = urlModule.parse(a.url).pathname.split('/').pop()
-    c.text = filename;
-    c.content_type = contentTypeFromExt(filename.split('.').pop());
-    return c;
-  }
-
-  return new Promise((resolve, reject) => {
-    console.log(url);
-    request = net.request({
-      url: url,
-      redirect: "follow"
-    }).on('response', (response) => {
-      console.log(response);
-      let text = '';
-      response.on('data', (chunk) => {
-        text += chunk;
-      });
-      response.on('end', () => { resolve(text); });
-    }).end();
-  }).then((text) => {
-    console.log(text);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html')
-    const contents = [];
-    doc.querySelectorAll("a, img").forEach((e) => {
-      if (e.tagName == "IMG") {
-        contents.push(parseImgTag(e));
-      } else {
-        contents.push(parseLinkTag(e));
-      }
-    });
-  });
-}
-
 ipcMain.on('open-inspection-view', function(event, j) {
   const arg = JSON.parse(j);
-
-  inspectPage(arg.url).then((contents) => {
-    const w = new BrowserWindow({
-      parent: mainWindow, 
-      show: false,
-    });
-    w.webContents.on('did-finish-load', function() {
-      const a = JSON.stringify({
-        parentUrl: arg.url,
-        contents: contents
-      });
-      w.webContents.send('store-data', a);
-    });
-    w.loadURL(`file://${__dirname}/inspection_view.html`);
-    w.showInactive();
+  const w = new BrowserWindow({
+    parent: mainWindow, 
+    show: false,
   });
+  w.webContents.on('did-finish-load', function() {
+    const a = JSON.stringify({
+      parentUrl: arg.url,
+      contents: arg.contents
+    });
+    w.webContents.send('store-data', a);
+  });
+  w.loadURL('inspection_view.html');
+  w.showInactive();
 });
 
-ipcMain.on('add-queue', (event, j) => {
-  console.log(j);
+const downloadList = [];
+const config = {
+  downloadDirPath: '/Users/kenjiomoto/Downloads'
+};
+const maxProcessCount = 5;
+
+function startDownloadProcess(d) {
+  d.started = true;
+  const req = net.request(d.url)
+  console.log(`${d.savePath}: started`)
+  req.on('response', (res) => {
+    // console.log(`${d.savePath}: HEADERS: ${JSON.stringify(res.headers)}`);
+    if (res.statusCode !== 200) {
+      console.log(`${d.savePath}: not ok ${res.statusCode}`);
+      return;
+    }
+    res.on('data', (data) => {
+      fs.appendFileSync(d.savePath, data);
+      // console.log(`${d.savePath}: append ${data.length}`);
+    })
+    res.on('end', () => {
+      d.finished = true;
+      console.log(`${d.savePath}: finished`)
+    })
+  }).end();
+}
+
+setInterval(() => {
+  let n = 0;
+  downloadList.forEach((d) => {
+    if (d.started && !d.finished) {
+      n += 1;
+    }
+  });
+  for(;n < maxProcessCount; ++n) {
+    const d = downloadList.find((d) => {
+      return !d.started;
+    });
+    if (d !== undefined) {
+      startDownloadProcess(d);
+    }  
+  }
+}, 1000);
+
+function addToDownloadList(arg) {
+  arg.contents.forEach(function(content, i) {
+    const d = {
+      id: Math.floor((Math.random() * 10000)),
+      progress: 0,
+      started: false,
+      savePath: `${config.downloadDirPath}/${i.toString()}`,
+      url: content.url,
+      content: content,
+      finished: false
+    };
+    downloadList.push(d);
+  });
+}
+
+addToDownloadList({
+  contents: [
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
+  ]
 });
+// ipcMain.on('add-queue', (event, j) => {
+//   const arg = JSON.parse(j);
+//   addToDownloadList(arg.pattern, arg.contents);
+// });

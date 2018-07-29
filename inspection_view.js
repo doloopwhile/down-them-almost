@@ -47,7 +47,7 @@ ipcRenderer.on("store-data", (event, j) => {
         const tdType = document.createElement('td');
         tdType.innerText = c.content_type;
         const tdText = document.createElement('td');
-        tdName.innerText = c.text;
+        tdText.innerText = c.text;
 
         const tr = document.createElement('tr');
         tr.dataset.content = JSON.stringify(c);
