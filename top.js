@@ -15,7 +15,7 @@ inspect.addEventListener("click", function() {
 });
 
 const extMapping = {
-  jpeg: "jpg",
+  jpg: "jpg",
   jpeg: "jpg",
   gif: "gif",
   png: "png",
@@ -32,28 +32,36 @@ function inspectPage(parentUrl) {
     return t;
   }
 
+  createContent = (url, text) => {
+    const filename = url.pathname.split('/').pop()
+    const name = filename.split(".").shift();
+    const ext = filename.split(".").pop();
+    
+    if (text == null || text == "") {
+      text = name;
+    }
+
+    return {
+      name: name,
+      ext: ext,
+      path: url.pathname,
+      host: url.host,
+      text: filename,
+      url: url.href,
+      content_type: contentTypeFromExt(filename.split('.').pop()),
+    };
+  };
+
   function parseImgTag(img) {
     const c = {};
     const u = new URL(img.getAttribute("src"), parentUrl);
-    const filename = u.pathname.split('/').pop()
-    return {
-      url: u.href,
-      text: filename,
-      content_type: contentTypeFromExt(filename.split('.').pop())
-    };
+    return createContent(u, img.getAttribute("alt"));
   }
 
   function parseLinkTag(a) {
     const c = {};
     const u = new URL(a.getAttribute('href'), parentUrl);
-    console.log(a.href, parentUrl, u.href);
-
-    const filename = u.pathname.split('/').pop()
-    return {
-      url: u.href,
-      text: filename,
-      content_type: contentTypeFromExt(filename.split('.').pop())
-    };
+    return createContent(u, null);
   }
       
   return fetch(parentUrl)

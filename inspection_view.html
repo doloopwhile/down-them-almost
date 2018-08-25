@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8">
     <title>Inspected</title>
+    <style>
+      table th {
+        text-align: left;
+      }
+    </style>
   </head>
   <body>
     <h1>
@@ -12,13 +17,23 @@
     <div>
       url: <span id="parentUrl"></span>
     </div>
-    <table id="contents"></table>
+    <table id="contents">
+      <thead>
+        <tr>
+          <th></th>
+          <th>URL</th>
+          <th>Text</th>
+          <th>File type</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
     <div>
       <button id="selectAll">Select all</button>
       <button id="unselectAll">Unselect all</button>
     </div>
     <div>
-      pattern: <input type="text" id="pattern" value="{name}" />
+      pattern: <input type="text" id="pattern" value="{num}-{name}.{ext}" />
     </div>
     <div>
       <button id="cancel">Cancel</button>

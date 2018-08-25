@@ -17,7 +17,7 @@ document.getElementById("cancel").addEventListener("click", () => {
 document.getElementById("start").addEventListener("click", () => {
     const t = document.getElementById('contents');
     const contents = [];
-    t.querySelectorAll("tr").forEach((e) => {
+    t.querySelectorAll("tbody tr").forEach((e) => {
         if (e.querySelector("input[type=checkbox]").checked) {
             contents.push(JSON.parse(e.dataset.content));
         }
@@ -36,6 +36,8 @@ ipcRenderer.on("store-data", (event, j) => {
 
     document.getElementById('parentUrl').innerText = arg.parentUrl;
     const t = document.getElementById('contents');
+    const tbody = t.querySelector('tbody');
+
     arg.contents.forEach(function(c) {
         const tdCheckbox = document.createElement("td");
         const cb = document.createElement("input");
@@ -56,6 +58,6 @@ ipcRenderer.on("store-data", (event, j) => {
         tr.appendChild(tdText);
         tr.appendChild(tdType);
 
-        t.appendChild(tr);
+        tbody.appendChild(tr);
     });
 });

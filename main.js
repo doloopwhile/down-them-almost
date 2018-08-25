@@ -11,9 +11,6 @@ function createWindow () {
   mainWindow.on('closed', function () {
     mainWindow = null
   });
-
-  progressWindow = new BrowserWindow({ parent: mainWindow });
-  progressWindow.loadFile('progress.html');
 }
 
 app.on('ready', () => {
@@ -34,10 +31,8 @@ app.on('activate', function () {
 
 ipcMain.on('open-inspection-view', function(event, j) {
   const arg = JSON.parse(j);
-  const w = new BrowserWindow({
-    parent: mainWindow, 
-    show: false,
-  });
+  const w = new BrowserWindow({show: false});
+  w.loadFile('inspection_view.html');
   w.webContents.on('did-finish-load', function() {
     const a = JSON.stringify({
       parentUrl: arg.url,
@@ -45,7 +40,6 @@ ipcMain.on('open-inspection-view', function(event, j) {
     });
     w.webContents.send('store-data', a);
   });
-  w.loadURL('inspection_view.html');
   w.showInactive();
 });
 
@@ -107,12 +101,16 @@ setInterval(() => {
 }, 1000);
 
 function addToDownloadList(arg) {
+  const now = new Date;
   arg.contents.forEach(function(content, i) {
+    const num = downloadList.length + 1;
+    const savePath = savePathOfContent(content, arg.pattern, num, now);
+
     const d = {
       id: Math.floor((Math.random() * 10000)),
       progress: 0,
       started: false,
-      savePath: `${config.downloadDirPath}/${i.toString()}`,
+      savePath: savePath,
       url: content.url,
       content: content,
       finished: false,
@@ -123,21 +121,43 @@ function addToDownloadList(arg) {
   });
 }
 
-addToDownloadList({
-  contents: [
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-    { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
-  ]
-});
 ipcMain.on('add-queue', (event, j) => {
   const arg = JSON.parse(j);
-  addToDownloadList(arg.pattern, arg.contents);
+  addToDownloadList(arg);
+  showProgressWindow();
 });
+
+const showProgressWindow = () => {
+  if (!progressWindow) {
+    progressWindow = new BrowserWindow({ parent: mainWindow });
+    progressWindow.loadFile('progress.html');
+  }
+  progressWindow.showInactive();
+}
+
+const paddingZero = (t, l) => {
+  while(t.legnth < l) {
+    t = "0" + t;
+  }
+  return t;
+}
+
+const savePathOfContent = (content, pattern, num, now) => { 
+  const path = pattern.
+    replace("{path}", content.path).
+    replace("{name}", content.name).
+    replace("{ext}",  content.ext).
+    replace("{text}", content.text).
+    replace("{yyyy}", (now.getYear() + 1900).toString()).
+    replace("{mm}",   paddingZero((now.getMonth() + 1).toString(), 2)).
+    replace("{dd}",   paddingZero(now.getDate().toString(), 2)).
+    replace("{HH}",   paddingZero(now.getHours().toString(), 2)).
+    replace("{MM}",   paddingZero(now.getMinutes().toString(), 2)).
+    replace("{SS}",   paddingZero(now.getSeconds().toString(), 2)).
+    replace("{subdir}", content.subdir).
+    replace("{url}", content.url).
+    replace("{num}", num)
+  ;
+ 
+  return `${config.downloadDirPath}/${path}`;
+};
