@@ -13,7 +13,7 @@ function createWindow () {
   });
 
   progressWindow = new BrowserWindow({ parent: mainWindow });
-  progressWindow.loadURL('progress.html');
+  progressWindow.loadFile('progress.html');
 }
 
 app.on('ready', () => {
@@ -58,23 +58,36 @@ const maxProcessCount = 5;
 function startDownloadProcess(d) {
   d.started = true;
   const req = net.request(d.url)
-  console.log(`${d.savePath}: started`)
+  notifyProgress();
   req.on('response', (res) => {
-    // console.log(`${d.savePath}: HEADERS: ${JSON.stringify(res.headers)}`);
     if (res.statusCode !== 200) {
-      console.log(`${d.savePath}: not ok ${res.statusCode}`);
+      notifyProgress();
       return;
     }
+
+    d.dataSize = parseInt(res.headers['Content-Length']);
     res.on('data', (data) => {
       fs.appendFileSync(d.savePath, data);
-      // console.log(`${d.savePath}: append ${data.length}`);
+      d.downloadedDataSize += data.length;
+      if (!isNaN(d.dataSize)) {
+        d.progress = Math.floor(d.downloadedDataSize / d.dataSize);
+      }
+      notifyProgress();
     })
     res.on('end', () => {
       d.finished = true;
-      console.log(`${d.savePath}: finished`)
+      d.progress = 100;
+      notifyProgress();
     })
   }).end();
 }
+
+const notifyProgress = () => {
+  if (progressWindow) {
+    progressWindow.webContents.send("progress", JSON.stringify(downloadList));
+  }
+}
+
 
 setInterval(() => {
   let n = 0;
@@ -102,7 +115,9 @@ function addToDownloadList(arg) {
       savePath: `${config.downloadDirPath}/${i.toString()}`,
       url: content.url,
       content: content,
-      finished: false
+      finished: false,
+      downloadedDataSize: 0,
+      dataSize: undefined
     };
     downloadList.push(d);
   });
@@ -122,7 +137,7 @@ addToDownloadList({
     { url: 'https://i.gzn.jp/img/2018/07/27/wf2018s-matome/00_m.jpg' },
   ]
 });
-// ipcMain.on('add-queue', (event, j) => {
-//   const arg = JSON.parse(j);
-//   addToDownloadList(arg.pattern, arg.contents);
-// });
+ipcMain.on('add-queue', (event, j) => {
+  const arg = JSON.parse(j);
+  addToDownloadList(arg.pattern, arg.contents);
+});
