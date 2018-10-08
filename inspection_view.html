@@ -7,6 +7,10 @@
       #contents th {
         text-align: left;
       }
+      #contents tbody td {
+        cursor: pointer;
+        user-select: none;
+      }
     </style>
   </head>
   <body>
@@ -27,7 +31,7 @@
     </div>
     <div>
       Minimum file size
-      <input id="minimumSize" type="number" min="0" vlaue="100" />KiB
+      <input id="minimumDataSize" type="number" min="0" value="100" />KiB
     </div>
     <hr />
     <div id="count">
@@ -48,7 +52,7 @@
     </div>
     <hr />
     <div>
-      save path pattern: <input type="text" id="pattern" value="{num}-{name}.{ext}" />
+      save path pattern: <input type="text" id="pattern" value="{yyyy}{mm}{dd}-{HH}{MM}{SS}/{num}-{name}.{ext}" />
     </div>
     <div>
       <button id="cancel">Cancel</button>

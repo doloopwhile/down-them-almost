@@ -1,6 +1,8 @@
-const {app, BrowserWindow, ipcMain, net} = require('electron');
+const {app, BrowserWindow, ipcMain, net, shell} = require('electron');
 const urlModule = require("url");
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 let mainWindow
 let progressWindow
@@ -50,18 +52,54 @@ const config = {
 const maxProcessCount = 5;
 
 function startDownloadProcess(d) {
-  d.started = true;
+  d.status = 'downloading';
   const req = net.request(d.url)
   notifyProgress();
   req.on('response', (res) => {
     if (res.statusCode !== 200) {
       notifyProgress();
+      d.status = 'error';
+      if (res.statusCode === 404) {
+        d.error = 'Not found';
+      } else {
+        d.error = 'Server error';  
+      }
       return;
     }
 
     d.dataSize = parseInt(res.headers['Content-Length']);
+    if (d.dataSize < d.minimumDataSize) {
+      req.abort();
+      notifyProgress();
+      d.status = 'skip';
+      d.error  = `size < ${d.minimumDataSize / 1024}KiB`;
+      return;
+    }
+
+    try {
+      const dirPath = path.dirname(d.savePath);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath);
+        fs.writeFileSync(d.savePath, '');
+      }
+    } catch(err) {
+      req.abort();
+      notifyProgress();
+      d.status = 'error';
+      d.error  = `file error`;
+      return;
+    }
+    
     res.on('data', (data) => {
-      fs.appendFileSync(d.savePath, data);
+      try {
+        fs.appendFileSync(d.savePath, data);
+      } catch(err) {
+        req.abort();
+        notifyProgress();
+        d.status = 'error';
+        d.error  = `file error`;
+        return;
+      }
       d.downloadedDataSize += data.length;
       if (!isNaN(d.dataSize)) {
         d.progress = Math.floor(d.downloadedDataSize / d.dataSize);
@@ -69,7 +107,15 @@ function startDownloadProcess(d) {
       notifyProgress();
     })
     res.on('end', () => {
-      d.finished = true;
+      if (d.downloadedDataSize < d.minimumDataSize) {
+        notifyProgress();
+        d.status = 'skip';
+        d.error  = `size < ${d.minimumDataSize / 1024}KiB`;
+        fs.unlinkSync(d.savePath);
+        return;
+      }
+
+      d.status = 'finished';
       d.progress = 100;
       notifyProgress();
     })
@@ -86,13 +132,13 @@ const notifyProgress = () => {
 setInterval(() => {
   let n = 0;
   downloadList.forEach((d) => {
-    if (d.started && !d.finished) {
+    if (d.status === 'downloading') {
       n += 1;
     }
   });
   for(;n < maxProcessCount; ++n) {
     const d = downloadList.find((d) => {
-      return !d.started;
+      return d.status == 'waiting';
     });
     if (d !== undefined) {
       startDownloadProcess(d);
@@ -104,18 +150,19 @@ function addToDownloadList(arg) {
   const now = new Date;
   arg.contents.forEach(function(content, i) {
     const num = downloadList.length + 1;
-    const savePath = savePathOfContent(content, arg.pattern, num, now);
+    const relativeSavePath = relativeSavePathOfContent(content, arg.pattern, num, now);
 
     const d = {
       id: Math.floor((Math.random() * 10000)),
       progress: 0,
-      started: false,
-      savePath: savePath,
+      status: 'waiting',
+      relativeSavePath: relativeSavePath,
+      savePath: `${config.downloadDirPath}/${relativeSavePath}`,
       url: content.url,
       content: content,
-      finished: false,
       downloadedDataSize: 0,
-      dataSize: undefined
+      dataSize: undefined,
+      minimumDataSize: arg.requirements.minimumDataSize
     };
     downloadList.push(d);
   });
@@ -127,11 +174,22 @@ ipcMain.on('add-queue', (event, j) => {
   showProgressWindow();
 });
 
+ipcMain.on('open-saved-file', (event, j) => {
+  const arg = JSON.parse(j);
+  shell.showItemInFolder(arg.savePath);
+});
+
 const showProgressWindow = () => {
   if (!progressWindow) {
     progressWindow = new BrowserWindow({ parent: mainWindow });
     progressWindow.loadFile('progress.html');
+    progressWindow.webContents.on('did-finish-load', () => {
+      notifyProgress();
+    });
   }
+  progressWindow.on("close", (e) => {
+    progressWindow = null;
+  });
   progressWindow.showInactive();
 }
 
@@ -142,8 +200,8 @@ const paddingZero = (t, l) => {
   return t;
 }
 
-const savePathOfContent = (content, pattern, num, now) => { 
-  const path = pattern.
+const relativeSavePathOfContent = (content, pattern, num, now) => { 
+  return pattern.
     replace("{path}", content.path).
     replace("{name}", content.name).
     replace("{ext}",  content.ext).
@@ -158,6 +216,4 @@ const savePathOfContent = (content, pattern, num, now) => {
     replace("{url}", content.url).
     replace("{num}", num)
   ;
- 
-  return `${config.downloadDirPath}/${path}`;
 };

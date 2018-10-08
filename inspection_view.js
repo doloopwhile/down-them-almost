@@ -62,18 +62,18 @@ document.getElementById("start").addEventListener("click", () => {
         }
     });
     const pattern = document.getElementById("pattern").value;
-    const minimumSize = (() => {
-        const v = document.getElementById("minimumSize").value;
+    const minimumDataSize = (() => {
+        const v = document.getElementById("minimumDataSize").value;
         if (v === null) {
             return 0;
         }
-        return parseInt(v);
+        return parseInt(v) * 1024;
     })();
     const arg = {
         contents: contents,
         pattern: pattern,
         requirements: {
-            minimumSize: minimumSize
+            minimumDataSize: minimumDataSize
         }
     }
     ipcRenderer.send("add-queue", JSON.stringify(arg));
@@ -104,6 +104,10 @@ ipcRenderer.on("store-data", (event, j) => {
         tdText.innerText = c.text;
 
         const tr = document.createElement('tr');
+        tdUrl.onclick  = () => { cb.checked = !cb.checked; };
+        tdText.onclick = () => { cb.checked = !cb.checked; };
+        tdType.onclick = () => { cb.checked = !cb.checked; };
+
         tr.dataset.content = JSON.stringify(c);
         tr.appendChild(tdCheckbox);
         tr.appendChild(tdUrl);

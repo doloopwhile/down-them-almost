@@ -3,10 +3,69 @@
   <head>
     <meta charset="UTF-8">
     <title>Progress</title>
+    <style>
+      #progress {
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      #progress th, #progress td {
+        text-align: left;
+        padding: 0 1ex;
+        word-break: break-all;
+      }
+      #url {
+        width: 50ex;
+      }
+      #savePath {
+        width: 50ex;
+      }
+      #progress {
+        width: 12ex;
+      }
+      #status {
+        width: 16ex;  
+      }
+      #error {
+        width: 20ex;
+      }
+      .tdFinishedFile {
+        text-decoration: underline;
+        color: blue;
+        cursor: pointer;
+      }
+
+      .progress-skip {
+        background: gray;
+      }
+      .progress-error {
+        background: lightpink;
+      }
+      .progress-waiting {
+        background: white;
+      }
+      .progress-downloading {
+        background: white;
+      }
+      .progress-finished {
+        background: lightgreen;
+      }
+    </style>
   </head>
   <body>
     <h1>Progress</h1>
-    <table id="progress"></table>
+    <table id="progress">
+      <thead>
+        <tr>
+            <th id="url">URL</th>
+            <th id="savePath">Save path</th>
+            <th id="status">Status</th>
+            <th id="progress">Progress</th>
+            <th id="error"></th>
+          </th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
     <script>
       require('./progress.js')
     </script>
