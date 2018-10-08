@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Inspected</title>
     <style>
-      table th {
+      #contents th {
         text-align: left;
       }
     </style>
@@ -13,27 +13,42 @@
     <h1>
       Inspected
     </h1>
-    
     <div>
       url: <span id="parentUrl"></span>
     </div>
-    <table id="contents">
-      <thead>
-        <tr>
-          <th></th>
-          <th>URL</th>
-          <th>Text</th>
-          <th>File type</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <hr />
     <div>
-      <button id="selectAll">Select all</button>
+      <button id="selectAll">All</button>
+      <button id="selectImages">All image files</button>
+      <button id="selectJPG">.jpg</button>
+      <button id="selectPNG">.png</button>
+      <button id="selectGIF">.gif</button>      
       <button id="unselectAll">Unselect all</button>
     </div>
     <div>
-      pattern: <input type="text" id="pattern" value="{num}-{name}.{ext}" />
+      Minimum file size
+      <input id="minimumSize" type="number" min="0" vlaue="100" />KiB
+    </div>
+    <hr />
+    <div id="count">
+      Selecting <span id="countOfSelected"></span>/<span id="countOfAll"></span>
+    </div>
+    <div style="height: 20em; overflow: scroll">
+      <table id="contents">
+        <thead>
+          <tr>
+            <th></th>
+            <th>URL</th>
+            <th>Text</th>
+            <th>File type</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>  
+    </div>
+    <hr />
+    <div>
+      save path pattern: <input type="text" id="pattern" value="{num}-{name}.{ext}" />
     </div>
     <div>
       <button id="cancel">Cancel</button>
