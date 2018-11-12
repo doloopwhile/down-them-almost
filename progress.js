@@ -35,7 +35,16 @@ ipcRenderer.on("progress", (event, j) => {
 
         const tdError = document.createElement('td');
         if (d.error != null) {
-            tdError.innerText = d.error;
+            const retry = document.createElement('button');
+            retry.textContent = 'Retry';
+            retry.onclick = () => {
+                alert("Retry!");
+            }
+            td.appendChild(retry);
+
+            const errorMessage = document.createElement('span');
+            errorMessage.innerText = d.error;
+            td.appendChild(errorMessage);
         }
         tr.appendChild(tdError);
 
